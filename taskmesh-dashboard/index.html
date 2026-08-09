@@ -1,0 +1,1066 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>TaskMesh Dashboard | Distributed Job Scheduler</title>
+    <meta name="description" content="Control panel for TaskMesh distributed job scheduling platform — monitor jobs, workers, and scheduler leader election in real time.">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+    <style>
+    :root {
+        --bg:        #06090f;
+        --surface:   #0c1220;
+        --surface2:  #111d33;
+        --surface3:  #162040;
+        --border:    rgba(255,255,255,0.07);
+        --border-hi: rgba(255,255,255,0.14);
+        --text:      #e2e8f0;
+        --muted:     #64748b;
+        --dim:       #2d3a52;
+        --primary:   #6366f1;
+        --primary-lo:rgba(99,102,241,0.12);
+        --primary-md:rgba(99,102,241,0.25);
+        --success:   #10b981;
+        --success-lo:rgba(16,185,129,0.12);
+        --warning:   #f59e0b;
+        --warning-lo:rgba(245,158,11,0.12);
+        --danger:    #ef4444;
+        --danger-lo: rgba(239,68,68,0.12);
+        --info:      #3b82f6;
+        --info-lo:   rgba(59,130,246,0.12);
+        --purple:    #8b5cf6;
+        --purple-lo: rgba(139,92,246,0.12);
+        --gray:      #6b7280;
+        --r:         12px;
+        --r-sm:      8px;
+        --r-xs:      6px;
+        --shadow:    0 8px 32px rgba(0,0,0,0.5);
+    }
+    *{box-sizing:border-box;margin:0;padding:0}
+    body{font-family:'Inter',sans-serif;background:var(--bg);color:var(--text);min-height:100vh;overflow-x:hidden}
+    ::-webkit-scrollbar{width:5px;height:5px}
+    ::-webkit-scrollbar-track{background:transparent}
+    ::-webkit-scrollbar-thumb{background:rgba(255,255,255,0.08);border-radius:3px}
+    ::-webkit-scrollbar-thumb:hover{background:rgba(255,255,255,0.16)}
+    .mono{font-family:'JetBrains Mono',monospace}
+
+    /* ═══ TOP BAR ══════════════════════════════════════════════════════════ */
+    .topbar{
+        display:flex;align-items:center;justify-content:space-between;
+        padding:0 24px;height:58px;
+        background:rgba(12,18,32,0.85);backdrop-filter:blur(24px);
+        border-bottom:1px solid var(--border);
+        position:sticky;top:0;z-index:100;
+    }
+    .logo{display:flex;align-items:center;gap:10px;text-decoration:none}
+    .logo-mark{
+        width:34px;height:34px;border-radius:9px;
+        background:linear-gradient(135deg,#6366f1,#818cf8);
+        display:flex;align-items:center;justify-content:center;
+        font-size:16px;box-shadow:0 0 20px rgba(99,102,241,0.4);
+    }
+    .logo-text{font-size:17px;font-weight:800;letter-spacing:-.4px;color:var(--text)}
+    .logo-text span{color:#818cf8}
+    .topbar-center{display:flex;align-items:center;gap:8px}
+    .live-dot{
+        width:7px;height:7px;border-radius:50%;background:var(--gray);
+        transition:background .3s;
+    }
+    .live-dot.on{background:var(--success);animation:pulse-green 2s infinite}
+    .live-dot.err{background:var(--danger)}
+    @keyframes pulse-green{0%,100%{box-shadow:0 0 0 0 rgba(16,185,129,.4)}50%{box-shadow:0 0 0 4px rgba(16,185,129,0)}}
+    .conn-label{font-size:12px;color:var(--muted)}
+    .topbar-right{display:flex;align-items:center;gap:12px}
+    .countdown-chip{
+        font-size:11px;color:var(--muted);
+        background:var(--surface2);border:1px solid var(--border);
+        border-radius:20px;padding:3px 10px;font-family:'JetBrains Mono',monospace;
+        cursor:pointer;transition:all .2s;
+    }
+    .countdown-chip:hover{border-color:var(--border-hi);color:var(--text)}
+    .clock{font-size:12px;font-family:'JetBrains Mono',monospace;color:var(--muted)}
+    .icon-btn{
+        width:32px;height:32px;background:var(--surface2);border:1px solid var(--border);
+        border-radius:var(--r-sm);color:var(--muted);cursor:pointer;
+        display:flex;align-items:center;justify-content:center;font-size:15px;
+        transition:all .2s;
+    }
+    .icon-btn:hover{background:var(--surface3);border-color:var(--border-hi);color:var(--text)}
+
+    /* ═══ MAIN ══════════════════════════════════════════════════════════════ */
+    .main{padding:22px;max-width:1700px;margin:0 auto}
+
+    /* ═══ STATS ROW ═════════════════════════════════════════════════════════ */
+    .stats-row{
+        display:grid;grid-template-columns:repeat(6,1fr);gap:12px;margin-bottom:20px;
+    }
+    @media(max-width:1280px){.stats-row{grid-template-columns:repeat(3,1fr)}}
+    @media(max-width:768px){.stats-row{grid-template-columns:repeat(2,1fr)}}
+    .stat{
+        position:relative;overflow:hidden;
+        background:var(--surface);border:1px solid var(--border);border-radius:var(--r);
+        padding:16px 18px;cursor:pointer;transition:all .2s;
+    }
+    .stat::after{
+        content:'';position:absolute;top:0;left:0;right:0;height:2px;
+        background:var(--c,var(--primary));opacity:0;transition:opacity .2s;
+    }
+    .stat:hover{border-color:var(--border-hi);transform:translateY(-1px)}
+    .stat:hover::after,.stat.on::after{opacity:1}
+    .stat.on{border-color:rgba(99,102,241,.25);background:rgba(99,102,241,.04)}
+    .stat-top{display:flex;align-items:center;justify-content:space-between;margin-bottom:10px}
+    .stat-lbl{font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:.5px;color:var(--muted)}
+    .stat-ico{font-size:18px;opacity:.35}
+    .stat-val{font-size:30px;font-weight:800;letter-spacing:-1.5px;line-height:1;color:var(--c,var(--text))}
+    .stat-sub{font-size:10px;color:var(--dim);margin-top:4px}
+
+    /* ═══ BODY GRID ═════════════════════════════════════════════════════════ */
+    .body-grid{
+        display:grid;grid-template-columns:300px 1fr;gap:16px;align-items:start;
+    }
+    @media(max-width:1100px){.body-grid{grid-template-columns:1fr}}
+    .left-col>*{margin-bottom:14px}
+    .left-col>*:last-child{margin-bottom:0}
+
+    /* ═══ PANEL ═════════════════════════════════════════════════════════════ */
+    .panel{background:var(--surface);border:1px solid var(--border);border-radius:var(--r);overflow:hidden}
+    .panel-hd{
+        display:flex;align-items:center;justify-content:space-between;
+        padding:14px 18px;border-bottom:1px solid var(--border);
+    }
+    .panel-title{
+        font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.6px;
+        color:var(--muted);display:flex;align-items:center;gap:7px;
+    }
+    .panel-bd{padding:14px 18px}
+
+    /* ═══ CREATE BTN ════════════════════════════════════════════════════════ */
+    .create-btn{
+        width:100%;padding:11px;border:none;border-radius:var(--r-sm);
+        background:linear-gradient(135deg,#6366f1,#818cf8);
+        color:#fff;font-size:13px;font-weight:700;letter-spacing:.3px;
+        cursor:pointer;display:flex;align-items:center;justify-content:center;gap:7px;
+        transition:all .2s;font-family:inherit;
+    }
+    .create-btn:hover{opacity:.9;transform:translateY(-1px);box-shadow:0 8px 24px rgba(99,102,241,.35)}
+
+    /* ═══ WORKER CARDS ══════════════════════════════════════════════════════ */
+    .worker-card{
+        border:1px solid var(--border);border-radius:var(--r-sm);padding:12px;
+        margin-bottom:10px;transition:border-color .2s;
+    }
+    .worker-card:hover{border-color:var(--border-hi)}
+    .worker-card:last-child{margin-bottom:0}
+    .worker-hd{display:flex;align-items:center;justify-content:space-between;margin-bottom:7px}
+    .worker-id{font-size:12px;font-weight:700;font-family:'JetBrains Mono',monospace;color:var(--text)}
+    .caps-row{display:flex;flex-wrap:wrap;gap:4px;margin-bottom:8px}
+    .cap{
+        font-size:9px;font-weight:700;text-transform:uppercase;letter-spacing:.4px;
+        background:var(--primary-lo);color:#a5b4fc;border:1px solid var(--primary-md);
+        border-radius:4px;padding:2px 5px;
+    }
+    .load-row{display:flex;align-items:center;gap:8px}
+    .load-bar{flex:1;height:3px;background:rgba(255,255,255,.07);border-radius:2px;overflow:hidden}
+    .load-fill{height:100%;border-radius:2px;background:var(--success);transition:width .5s ease}
+    .load-fill.med{background:var(--warning)}
+    .load-fill.hi{background:var(--danger)}
+    .load-txt{font-size:10px;color:var(--muted);white-space:nowrap;font-family:'JetBrains Mono',monospace}
+    .hb-txt{font-size:10px;color:var(--dim);margin-top:5px;font-family:'JetBrains Mono',monospace}
+
+    /* ═══ BADGES ════════════════════════════════════════════════════════════ */
+    .badge{
+        display:inline-flex;align-items:center;gap:4px;padding:2px 8px;
+        border-radius:20px;font-size:9px;font-weight:800;text-transform:uppercase;letter-spacing:.5px;
+        border:1px solid transparent;
+    }
+    .bd{width:5px;height:5px;border-radius:50%;background:currentColor;flex-shrink:0}
+    .badge.QUEUED    {background:var(--primary-lo);color:#a5b4fc;border-color:rgba(99,102,241,.25)}
+    .badge.SCHEDULED {background:var(--primary-lo);color:#a5b4fc;border-color:rgba(99,102,241,.25)}
+    .badge.ASSIGNED  {background:var(--purple-lo);color:#c4b5fd;border-color:rgba(139,92,246,.25)}
+    .badge.RUNNING   {background:var(--info-lo);color:#93c5fd;border-color:rgba(59,130,246,.25);animation:blink 2s infinite}
+    .badge.COMPLETED {background:var(--success-lo);color:#6ee7b7;border-color:rgba(16,185,129,.25)}
+    .badge.FAILED    {background:var(--danger-lo);color:#fca5a5;border-color:rgba(239,68,68,.25)}
+    .badge.RETRYING  {background:var(--warning-lo);color:#fcd34d;border-color:rgba(245,158,11,.25)}
+    .badge.DEAD_LETTER{background:rgba(107,114,128,.12);color:#9ca3af;border-color:rgba(107,114,128,.2)}
+    .badge.CANCELLED {background:rgba(156,163,175,.08);color:#9ca3af;border-color:rgba(156,163,175,.15)}
+    .badge.ACTIVE    {background:var(--success-lo);color:#6ee7b7;border-color:rgba(16,185,129,.25)}
+    .badge.DEAD      {background:var(--danger-lo);color:#fca5a5;border-color:rgba(239,68,68,.25)}
+    .badge.LEADER    {background:rgba(99,102,241,.15);color:#a5b4fc;border-color:rgba(99,102,241,.35)}
+    .badge.STANDBY   {background:rgba(107,114,128,.12);color:#9ca3af;border-color:rgba(107,114,128,.2)}
+    @keyframes blink{0%,100%{opacity:1}50%{opacity:.65}}
+    .prio{font-size:9px;font-weight:800;text-transform:uppercase;letter-spacing:.4px;padding:2px 6px;border-radius:4px}
+    .prio.CRITICAL{background:rgba(239,68,68,.15);color:#fca5a5}
+    .prio.HIGH    {background:rgba(245,158,11,.15);color:#fcd34d}
+    .prio.NORMAL  {background:var(--primary-lo);color:#a5b4fc}
+    .prio.LOW     {background:rgba(107,114,128,.12);color:#9ca3af}
+
+    /* ═══ FILTER TABS ═══════════════════════════════════════════════════════ */
+    .ftabs{display:flex;gap:3px;padding:10px 18px;border-bottom:1px solid var(--border);overflow-x:auto}
+    .ftabs::-webkit-scrollbar{height:0}
+    .ftab{
+        padding:4px 11px;border-radius:20px;font-size:11px;font-weight:500;
+        cursor:pointer;white-space:nowrap;border:1px solid transparent;
+        color:var(--muted);transition:all .15s;display:flex;align-items:center;gap:5px;
+    }
+    .ftab:hover{color:var(--text);background:var(--surface2)}
+    .ftab.on{background:var(--primary-lo);border-color:var(--primary-md);color:#a5b4fc}
+    .tcnt{
+        background:rgba(255,255,255,.08);border-radius:10px;
+        padding:0 5px;font-size:9px;font-weight:700;
+    }
+    .ftab.on .tcnt{background:var(--primary-md)}
+
+    /* ═══ TABLE CONTROLS ════════════════════════════════════════════════════ */
+    .tcontrols{display:flex;align-items:center;gap:10px;padding:10px 18px;border-bottom:1px solid var(--border)}
+    .search-in{
+        flex:1;background:var(--surface2);border:1px solid var(--border);border-radius:var(--r-sm);
+        padding:8px 12px;color:var(--text);font-size:12px;font-family:inherit;outline:none;transition:all .2s;
+    }
+    .search-in:focus{border-color:var(--primary);background:var(--surface3)}
+    .search-in::placeholder{color:var(--dim)}
+    .sort-sel{
+        background:var(--surface2);border:1px solid var(--border);border-radius:var(--r-sm);
+        padding:7px 10px;color:var(--muted);font-size:11px;font-family:inherit;outline:none;cursor:pointer;
+    }
+    .sort-sel:focus{border-color:var(--primary)}
+    option{background:var(--surface2)}
+
+    /* ═══ JOBS TABLE ════════════════════════════════════════════════════════ */
+    .tw{overflow:auto;max-height:520px}
+    .jt{width:100%;border-collapse:collapse}
+    .jt th{
+        padding:8px 16px;text-align:left;font-size:10px;font-weight:700;
+        text-transform:uppercase;letter-spacing:.5px;color:var(--muted);
+        border-bottom:1px solid var(--border);white-space:nowrap;
+        position:sticky;top:0;background:var(--surface);z-index:5;
+    }
+    .jt td{
+        padding:11px 16px;font-size:12px;
+        border-bottom:1px solid rgba(255,255,255,.025);vertical-align:middle;
+    }
+    .jt tbody tr{cursor:pointer;transition:background .1s}
+    .jt tbody tr:hover td{background:rgba(255,255,255,.018)}
+    .jt tbody tr.sel td{background:rgba(99,102,241,.06)}
+    .jt tbody tr:last-child td{border-bottom:none}
+    .jid{font-family:'JetBrains Mono',monospace;font-size:10px;color:var(--muted)}
+    .jtype{font-weight:600;color:var(--text);font-size:12px}
+    .jwrk{font-family:'JetBrains Mono',monospace;font-size:10px;color:var(--muted)}
+    .acts{white-space:nowrap;display:flex;align-items:center;gap:5px}
+    .abtn{
+        padding:3px 9px;border-radius:5px;font-size:10px;font-weight:700;
+        cursor:pointer;border:1px solid;transition:all .2s;font-family:inherit;
+    }
+    .abtn.cancel{background:var(--danger-lo);border-color:rgba(239,68,68,.25);color:#fca5a5}
+    .abtn.cancel:hover{background:rgba(239,68,68,.2)}
+    .abtn.retry{background:var(--warning-lo);border-color:rgba(245,158,11,.25);color:#fcd34d}
+    .abtn.retry:hover{background:rgba(245,158,11,.2)}
+    .abtn.view{background:var(--primary-lo);border-color:var(--primary-md);color:#a5b4fc}
+    .abtn.view:hover{background:var(--primary-md)}
+    .empty{padding:60px 20px;text-align:center;color:var(--muted)}
+    .empty-ico{font-size:36px;opacity:.3;margin-bottom:12px}
+    .empty-txt{font-size:13px}
+
+    /* ═══ DRAWER ════════════════════════════════════════════════════════════ */
+    .overlay{position:fixed;inset:0;background:rgba(0,0,0,.55);z-index:200;opacity:0;pointer-events:none;transition:opacity .3s}
+    .overlay.on{opacity:1;pointer-events:all}
+    .drawer{
+        position:fixed;top:0;right:0;bottom:0;width:500px;max-width:100vw;
+        background:var(--surface);border-left:1px solid var(--border);
+        z-index:201;transform:translateX(100%);transition:transform .3s cubic-bezier(.4,0,.2,1);
+        display:flex;flex-direction:column;overflow:hidden;
+    }
+    .drawer.on{transform:translateX(0)}
+    .drawer-hd{display:flex;align-items:flex-start;justify-content:space-between;padding:20px;border-bottom:1px solid var(--border);flex-shrink:0}
+    .drawer-bd{flex:1;overflow-y:auto;padding:20px}
+    .drawer-ft{padding:16px 20px;border-top:1px solid var(--border);display:flex;gap:8px;flex-shrink:0}
+    .dlbl{font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:var(--muted);margin-bottom:5px}
+    .dval{font-size:13px;color:var(--text);word-break:break-all}
+    .dval.code{font-family:'JetBrains Mono',monospace;font-size:11px;color:var(--muted)}
+    .dsec{margin-bottom:16px}
+    .dgrid{display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-bottom:14px}
+    .code-blk{
+        background:var(--bg);border:1px solid var(--border);border-radius:var(--r-sm);
+        padding:10px 12px;font-family:'JetBrains Mono',monospace;font-size:10.5px;
+        color:#94a3b8;white-space:pre-wrap;word-break:break-all;
+        max-height:130px;overflow-y:auto;line-height:1.5;
+    }
+    .code-blk.success{border-color:rgba(16,185,129,.2)}
+    .code-blk.error{border-color:rgba(239,68,68,.25);color:#fca5a5}
+    .divider{height:1px;background:var(--border);margin:16px 0}
+    .btn{
+        flex:1;padding:10px;border-radius:var(--r-sm);font-size:12px;font-weight:700;
+        cursor:pointer;border:1px solid;transition:all .2s;font-family:inherit;
+        display:flex;align-items:center;justify-content:center;gap:6px;
+    }
+    .btn-danger{background:var(--danger-lo);border-color:rgba(239,68,68,.25);color:#fca5a5}
+    .btn-danger:hover{background:rgba(239,68,68,.2)}
+    .btn-warn{background:var(--warning-lo);border-color:rgba(245,158,11,.25);color:#fcd34d}
+    .btn-warn:hover{background:rgba(245,158,11,.2)}
+    .btn-ghost{background:var(--surface2);border-color:var(--border);color:var(--muted)}
+    .btn-ghost:hover{color:var(--text);border-color:var(--border-hi)}
+
+    /* ═══ MODAL ═════════════════════════════════════════════════════════════ */
+    .modal-ov{
+        position:fixed;inset:0;background:rgba(0,0,0,.65);backdrop-filter:blur(6px);
+        z-index:300;display:flex;align-items:center;justify-content:center;padding:20px;
+        opacity:0;pointer-events:none;transition:opacity .25s;
+    }
+    .modal-ov.on{opacity:1;pointer-events:all}
+    .modal{
+        background:var(--surface);border:1px solid var(--border);border-radius:var(--r);
+        width:100%;max-width:580px;max-height:90vh;overflow-y:auto;
+        transform:scale(.96) translateY(-16px);transition:transform .25s;box-shadow:var(--shadow);
+    }
+    .modal-ov.on .modal{transform:scale(1) translateY(0)}
+    .mhd{padding:20px 24px;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between}
+    .mbd{padding:20px 24px}
+    .mft{padding:14px 24px;border-top:1px solid var(--border);display:flex;gap:8px;justify-content:flex-end}
+    .mtitle{font-size:16px;font-weight:800}
+    .fg{margin-bottom:14px}
+    .fl{display:block;font-size:11px;font-weight:600;color:var(--muted);margin-bottom:5px;text-transform:uppercase;letter-spacing:.5px}
+    .fc{
+        width:100%;background:var(--surface2);border:1px solid var(--border);border-radius:var(--r-sm);
+        padding:9px 12px;color:var(--text);font-size:12px;font-family:inherit;outline:none;transition:all .2s;
+    }
+    .fc:focus{border-color:var(--primary);background:var(--surface3)}
+    .fc.mono{font-family:'JetBrains Mono',monospace}
+    .frow{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+    .sbtn{
+        padding:10px 22px;background:linear-gradient(135deg,#6366f1,#818cf8);border:none;
+        border-radius:var(--r-sm);color:#fff;font-size:13px;font-weight:700;cursor:pointer;
+        font-family:inherit;transition:all .2s;
+    }
+    .sbtn:hover{opacity:.9;box-shadow:0 4px 16px rgba(99,102,241,.35)}
+    .cbtn{
+        padding:10px 22px;background:var(--surface2);border:1px solid var(--border);
+        border-radius:var(--r-sm);color:var(--muted);font-size:13px;font-weight:600;cursor:pointer;
+        font-family:inherit;transition:all .2s;
+    }
+    .cbtn:hover{color:var(--text);border-color:var(--border-hi)}
+
+    /* ═══ SETTINGS ══════════════════════════════════════════════════════════ */
+    .sov{
+        position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:400;
+        display:flex;align-items:center;justify-content:center;
+        opacity:0;pointer-events:none;transition:opacity .2s;
+    }
+    .sov.on{opacity:1;pointer-events:all}
+    .spanel{
+        background:var(--surface);border:1px solid var(--border);border-radius:var(--r);
+        width:420px;padding:24px;box-shadow:var(--shadow);
+    }
+    .shd{display:flex;align-items:center;justify-content:space-between;margin-bottom:20px}
+
+    /* ═══ TOAST ═════════════════════════════════════════════════════════════ */
+    #toast-ct{position:fixed;bottom:22px;right:22px;z-index:999;display:flex;flex-direction:column;gap:7px}
+    .toast{
+        background:var(--surface2);border:1px solid var(--border);border-radius:var(--r-sm);
+        padding:11px 16px;font-size:12px;display:flex;align-items:center;gap:9px;
+        box-shadow:var(--shadow);animation:slideR .3s ease;min-width:240px;max-width:340px;
+    }
+    .toast.ok{border-left:3px solid var(--success)}
+    .toast.err{border-left:3px solid var(--danger)}
+    .toast.info{border-left:3px solid var(--primary)}
+    @keyframes slideR{from{transform:translateX(110%);opacity:0}to{transform:translateX(0);opacity:1}}
+
+    /* ═══ SCHEDULER PANEL ═══════════════════════════════════════════════════ */
+    .leader-card{
+        display:flex;align-items:center;gap:10px;
+        background:var(--primary-lo);border:1px solid var(--primary-md);
+        border-radius:var(--r-sm);padding:10px 14px;margin-bottom:12px;
+    }
+    .leader-ico{font-size:20px}
+    .leader-name{font-size:13px;font-weight:700;font-family:'JetBrains Mono',monospace;color:#a5b4fc}
+    .leader-sub{font-size:10px;color:var(--muted)}
+    .sched-row{display:flex;align-items:center;justify-content:space-between;padding:6px 0;border-bottom:1px solid var(--border)}
+    .sched-row:last-child{border-bottom:none}
+    .skey{font-size:11px;color:var(--muted)}
+    .sval{font-size:11px;font-family:'JetBrains Mono',monospace;color:var(--text)}
+
+    .no-data{text-align:center;padding:24px;color:var(--muted);font-size:12px}
+    </style>
+</head>
+<body>
+
+<div id="toast-ct"></div>
+
+<!-- ═══ TOP BAR ═══════════════════════════════════════════════════════════════ -->
+<div class="topbar">
+    <a class="logo" href="#">
+        <div class="logo-mark">⬡</div>
+        <div class="logo-text">Task<span>Mesh</span></div>
+    </a>
+    <div class="topbar-center">
+        <div class="live-dot" id="liveDot"></div>
+        <span class="conn-label" id="connLabel">Connecting…</span>
+    </div>
+    <div class="topbar-right">
+        <div class="countdown-chip" id="cdChip" onclick="refresh()" title="Click to refresh now">⟳ 5s</div>
+        <div class="clock" id="clk"></div>
+        <div class="icon-btn" onclick="openSettings()" title="Settings">⚙</div>
+    </div>
+</div>
+
+<!-- ═══ MAIN ══════════════════════════════════════════════════════════════════ -->
+<div class="main">
+
+    <!-- Stats Row -->
+    <div class="stats-row" id="statsRow">
+        <div class="stat" style="--c:#a5b4fc" onclick="setFilter('ALL')" id="sc-ALL">
+            <div class="stat-top"><span class="stat-lbl">Total</span><span class="stat-ico">⬡</span></div>
+            <div class="stat-val" id="sv-ALL">—</div>
+            <div class="stat-sub">All jobs</div>
+        </div>
+        <div class="stat" style="--c:#93c5fd" onclick="setFilter('RUNNING')" id="sc-RUNNING">
+            <div class="stat-top"><span class="stat-lbl">Running</span><span class="stat-ico">▶</span></div>
+            <div class="stat-val" id="sv-RUNNING">—</div>
+            <div class="stat-sub">In execution</div>
+        </div>
+        <div class="stat" style="--c:#a5b4fc" onclick="setFilter('QUEUED')" id="sc-QUEUED">
+            <div class="stat-top"><span class="stat-lbl">Queued</span><span class="stat-ico">◷</span></div>
+            <div class="stat-val" id="sv-QUEUED">—</div>
+            <div class="stat-sub">Waiting to run</div>
+        </div>
+        <div class="stat" style="--c:#6ee7b7" onclick="setFilter('COMPLETED')" id="sc-COMPLETED">
+            <div class="stat-top"><span class="stat-lbl">Completed</span><span class="stat-ico">✓</span></div>
+            <div class="stat-val" id="sv-COMPLETED">—</div>
+            <div class="stat-sub">Successful</div>
+        </div>
+        <div class="stat" style="--c:#fca5a5" onclick="setFilter('FAILED')" id="sc-FAILED">
+            <div class="stat-top"><span class="stat-lbl">Failed</span><span class="stat-ico">✗</span></div>
+            <div class="stat-val" id="sv-FAILED">—</div>
+            <div class="stat-sub">Needs attention</div>
+        </div>
+        <div class="stat" style="--c:#9ca3af" onclick="setFilter('DEAD_LETTER')" id="sc-DEAD_LETTER">
+            <div class="stat-top"><span class="stat-lbl">Dead Letter</span><span class="stat-ico">☠</span></div>
+            <div class="stat-val" id="sv-DEAD_LETTER">—</div>
+            <div class="stat-sub">Retries exhausted</div>
+        </div>
+    </div>
+
+    <!-- Body Grid -->
+    <div class="body-grid">
+
+        <!-- Left Column -->
+        <div class="left-col">
+
+            <!-- Quick Submit -->
+            <div class="panel">
+                <div class="panel-hd">
+                    <div class="panel-title">⚡ Quick Submit</div>
+                </div>
+                <div class="panel-bd">
+                    <button class="create-btn" onclick="openModal()">+ Submit New Job</button>
+                </div>
+            </div>
+
+            <!-- Worker Cluster -->
+            <div class="panel">
+                <div class="panel-hd">
+                    <div class="panel-title">⚙ Worker Cluster</div>
+                    <span style="font-size:10px;color:var(--muted)" id="workerMeta">—</span>
+                </div>
+                <div class="panel-bd" id="workerList"><div class="no-data">Loading workers…</div></div>
+            </div>
+
+            <!-- Scheduler -->
+            <div class="panel">
+                <div class="panel-hd">
+                    <div class="panel-title">👑 Leader Election</div>
+                </div>
+                <div class="panel-bd" id="schedulerPanel"><div class="no-data">Loading…</div></div>
+            </div>
+
+        </div>
+
+        <!-- Right Column: Jobs Panel -->
+        <div class="panel">
+            <div class="panel-hd">
+                <div class="panel-title">📋 Job Registry</div>
+                <span style="font-size:10px;color:var(--muted)" id="jobMeta">—</span>
+            </div>
+
+            <!-- Filter Tabs -->
+            <div class="ftabs" id="ftabs"></div>
+
+            <!-- Controls -->
+            <div class="tcontrols">
+                <input class="search-in" type="text" id="searchIn" placeholder="Search by ID, type, worker, status…" oninput="applyFilters()">
+                <select class="sort-sel" id="sortSel" onchange="applyFilters()">
+                    <option value="newest">Newest First</option>
+                    <option value="oldest">Oldest First</option>
+                    <option value="priority">Priority ↓</option>
+                    <option value="status">Status A-Z</option>
+                </select>
+            </div>
+
+            <!-- Table -->
+            <div class="tw">
+                <table class="jt">
+                    <thead>
+                        <tr>
+                            <th>Job ID</th>
+                            <th>Type</th>
+                            <th>Status</th>
+                            <th>Priority</th>
+                            <th>Worker</th>
+                            <th>Attempts</th>
+                            <th>Created</th>
+                            <th>Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody id="jtbody"></tbody>
+                </table>
+                <div id="emptyState" class="empty" style="display:none">
+                    <div class="empty-ico">📭</div>
+                    <div class="empty-txt">No jobs match your filter</div>
+                </div>
+            </div>
+        </div>
+
+    </div><!-- /body-grid -->
+</div><!-- /main -->
+
+<!-- ═══ JOB DETAIL DRAWER ═════════════════════════════════════════════════════ -->
+<div class="overlay" id="drawerOv" onclick="closeDrawer()"></div>
+<div class="drawer" id="drawer">
+    <div class="drawer-hd">
+        <div>
+            <div style="font-size:15px;font-weight:800;margin-bottom:3px">Job Details</div>
+            <div style="font-family:'JetBrains Mono',monospace;font-size:10px;color:var(--muted)" id="dJobId">—</div>
+        </div>
+        <button class="icon-btn" onclick="closeDrawer()">✕</button>
+    </div>
+    <div class="drawer-bd" id="drawerBd">Loading…</div>
+    <div class="drawer-ft" id="drawerFt"></div>
+</div>
+
+<!-- ═══ CREATE JOB MODAL ══════════════════════════════════════════════════════ -->
+<div class="modal-ov" id="modalOv" onclick="handleModalClick(event)">
+    <div class="modal">
+        <div class="mhd">
+            <div class="mtitle">⚡ Submit New Job</div>
+            <button class="icon-btn" onclick="closeModal()">✕</button>
+        </div>
+        <div class="mbd">
+            <div class="frow">
+                <div class="fg">
+                    <label class="fl">Job Type *</label>
+                    <select class="fc" id="fType">
+                        <option>RUN_COMMAND</option>
+                        <option>HTTP_REQUEST</option>
+                        <option>FILE_PROCESSING</option>
+                        <option>TEST_EXECUTION</option>
+                        <option>BUILD_PROJECT</option>
+                        <option>SEND_NOTIFICATION</option>
+                        <option>DATA_PROCESSING</option>
+                    </select>
+                </div>
+                <div class="fg">
+                    <label class="fl">Priority</label>
+                    <select class="fc" id="fPriority">
+                        <option>CRITICAL</option>
+                        <option>HIGH</option>
+                        <option selected>NORMAL</option>
+                        <option>LOW</option>
+                    </select>
+                </div>
+            </div>
+            <div class="fg">
+                <label class="fl">Payload (JSON)</label>
+                <textarea class="fc mono" id="fPayload" rows="4" placeholder='{"command":"echo hello"}'>{}</textarea>
+            </div>
+            <div class="fg">
+                <label class="fl">Required Capabilities <span style="font-weight:400;text-transform:none;letter-spacing:0;font-size:10px">(comma-separated, optional)</span></label>
+                <input class="fc" id="fCaps" type="text" placeholder="e.g. TEST_EXECUTION,BUILD_PROJECT">
+            </div>
+            <div class="frow">
+                <div class="fg">
+                    <label class="fl">Max Retries</label>
+                    <input class="fc" id="fRetries" type="number" value="3" min="0" max="10">
+                </div>
+                <div class="fg">
+                    <label class="fl">Timeout (sec)</label>
+                    <input class="fc" id="fTimeout" type="number" value="300" min="5">
+                </div>
+            </div>
+            <div class="fg">
+                <label class="fl">Idempotency Key <span style="font-weight:400;text-transform:none;letter-spacing:0;font-size:10px">(optional — same key = same job)</span></label>
+                <input class="fc mono" id="fIdemp" type="text" placeholder="unique-key-for-dedup">
+            </div>
+        </div>
+        <div class="mft">
+            <button class="cbtn" onclick="closeModal()">Cancel</button>
+            <button class="sbtn" onclick="submitJob()">Submit Job →</button>
+        </div>
+    </div>
+</div>
+
+<!-- ═══ SETTINGS PANEL ════════════════════════════════════════════════════════ -->
+<div class="sov" id="settingsOv" onclick="handleSettingsClick(event)">
+    <div class="spanel">
+        <div class="shd">
+            <div style="font-size:15px;font-weight:800">⚙ Settings</div>
+            <button class="icon-btn" onclick="closeSettings()">✕</button>
+        </div>
+        <div class="fg">
+            <label class="fl">API Base URL (taskmesh-api)</label>
+            <input class="fc mono" id="sApiUrl" type="text" placeholder="http://localhost:8080">
+            <div style="font-size:10px;color:var(--muted);margin-top:5px">The REST API host. Default: http://localhost:8080</div>
+        </div>
+        <div class="fg">
+            <label class="fl">Scheduler URL (for leader status)</label>
+            <input class="fc mono" id="sSchedUrl" type="text" placeholder="http://localhost:8081">
+            <div style="font-size:10px;color:var(--muted);margin-top:5px">Primary scheduler host. Fallback to :8082 automatically.</div>
+        </div>
+        <div class="fg">
+            <label class="fl">Refresh Interval (seconds)</label>
+            <input class="fc" id="sInterval" type="number" value="5" min="2" max="60">
+        </div>
+        <div style="display:flex;gap:8px;justify-content:flex-end;margin-top:8px">
+            <button class="cbtn" onclick="closeSettings()">Cancel</button>
+            <button class="sbtn" onclick="saveSettings()">Save & Reconnect</button>
+        </div>
+    </div>
+</div>
+
+<script>
+// ═════════════════════════════════════════════════════════════════════
+//  STATE
+// ═════════════════════════════════════════════════════════════════════
+const S = {
+    jobs: [], workers: [], scheduler: null,
+    selId: null, filter: 'ALL', search: '', sort: 'newest',
+    apiBase: localStorage.getItem('tm_api') || 'http://localhost:8080',
+    schedUrl: localStorage.getItem('tm_sched') || 'http://localhost:8081',
+    interval: parseInt(localStorage.getItem('tm_interval') || '5'),
+    connected: false,
+};
+
+const FILTERS = ['ALL','RUNNING','QUEUED','ASSIGNED','COMPLETED','FAILED','RETRYING','DEAD_LETTER','CANCELLED'];
+const PRIO_LEVEL = {CRITICAL:4,HIGH:3,NORMAL:2,LOW:1};
+
+let pollTimer = null, cdTimer = null, cdVal = S.interval;
+
+// ═════════════════════════════════════════════════════════════════════
+//  BOOT
+// ═════════════════════════════════════════════════════════════════════
+function init() {
+    renderFilterTabs();
+    clockTick();
+    setInterval(clockTick, 1000);
+    startCountdown();
+    refresh();
+    startPoll();
+}
+
+function startPoll() {
+    clearInterval(pollTimer);
+    pollTimer = setInterval(refresh, S.interval * 1000);
+}
+
+function startCountdown() {
+    clearInterval(cdTimer);
+    cdVal = S.interval;
+    cdTick();
+    cdTimer = setInterval(() => { cdVal--; if (cdVal < 0) cdVal = S.interval; cdTick(); }, 1000);
+}
+
+function cdTick() {
+    const el = document.getElementById('cdChip');
+    if (el) el.textContent = `⟳ ${cdVal}s`;
+}
+
+// ═════════════════════════════════════════════════════════════════════
+//  REFRESH
+// ═════════════════════════════════════════════════════════════════════
+async function refresh() {
+    cdVal = S.interval;
+    try {
+        const [jobs, workers] = await Promise.all([apiFetch('/api/v1/jobs'), apiFetch('/api/v1/workers')]);
+        S.jobs = jobs || []; S.workers = workers || [];
+        S.connected = true;
+        setConn(true);
+    } catch {
+        S.connected = false;
+        setConn(false);
+    }
+    try { S.scheduler = await fetchSched(); } catch { S.scheduler = null; }
+    renderStats(); renderWorkers(); renderScheduler(); renderJobs();
+    if (S.selId) { const j = S.jobs.find(j => j.jobId === S.selId); if (j) renderDrawer(j); }
+}
+
+// ═════════════════════════════════════════════════════════════════════
+//  API
+// ═════════════════════════════════════════════════════════════════════
+async function apiFetch(path, opts = {}) {
+    const r = await fetch(S.apiBase + path, opts);
+    if (!r.ok) throw new Error(`HTTP ${r.status}`);
+    return r.json();
+}
+
+async function fetchSched() {
+    const tryUrl = async (url) => {
+        const r = await fetch(url + '/api/v1/scheduler/status', { signal: AbortSignal.timeout(2500) });
+        if (!r.ok) throw new Error(); return r.json();
+    };
+    try { return await tryUrl(S.schedUrl); }
+    catch { return await tryUrl('http://localhost:8082'); }
+}
+
+async function apiPost(path, body, headers = {}) {
+    return apiFetch(path, { method: 'POST', headers: {'Content-Type':'application/json',...headers}, body: body ? JSON.stringify(body) : undefined });
+}
+
+async function apiDelete(path) {
+    const r = await fetch(S.apiBase + path, { method: 'DELETE' });
+    if (!r.ok) throw new Error(`HTTP ${r.status}`);
+    return r.json();
+}
+
+// ═════════════════════════════════════════════════════════════════════
+//  RENDER: STATS
+// ═════════════════════════════════════════════════════════════════════
+function renderStats() {
+    const j = S.jobs;
+    const counts = {
+        ALL: j.length,
+        RUNNING: j.filter(x=>x.status==='RUNNING').length,
+        QUEUED: j.filter(x=>x.status==='QUEUED'||x.status==='ASSIGNED').length,
+        COMPLETED: j.filter(x=>x.status==='COMPLETED').length,
+        FAILED: j.filter(x=>x.status==='FAILED').length,
+        DEAD_LETTER: j.filter(x=>x.status==='DEAD_LETTER').length,
+    };
+    Object.entries(counts).forEach(([k,v]) => {
+        const el = document.getElementById('sv-'+k);
+        if (el) el.textContent = v;
+    });
+    // active stat card highlight
+    FILTERS.forEach(f => {
+        const c = document.getElementById('sc-'+f);
+        if (c) c.classList.toggle('on', f === S.filter);
+    });
+    document.getElementById('jobMeta').textContent = `${j.length} jobs total • last refresh ${new Date().toLocaleTimeString()}`;
+}
+
+// ═════════════════════════════════════════════════════════════════════
+//  RENDER: WORKERS
+// ═════════════════════════════════════════════════════════════════════
+function renderWorkers() {
+    const el = document.getElementById('workerList');
+    const meta = document.getElementById('workerMeta');
+    const active = S.workers.filter(w => w.status === 'ACTIVE');
+    meta.textContent = `${active.length}/${S.workers.length} active`;
+    if (!S.workers.length) { el.innerHTML = '<div class="no-data">No workers registered yet</div>'; return; }
+    el.innerHTML = S.workers.map(w => {
+        const load = Math.round(w.loadPercent || 0);
+        const fillCls = load >= 80 ? 'hi' : load >= 50 ? 'med' : '';
+        const caps = (w.capabilities||'').split(',').filter(Boolean);
+        return `<div class="worker-card">
+            <div class="worker-hd">
+                <div class="worker-id">${esc(w.workerId)}</div>
+                <span class="badge ${w.status}"><span class="bd"></span>${w.status}</span>
+            </div>
+            <div class="caps-row">${caps.map(c=>`<span class="cap">${esc(c.trim())}</span>`).join('')}</div>
+            <div class="load-row">
+                <div class="load-bar"><div class="load-fill ${fillCls}" style="width:${load}%"></div></div>
+                <span class="load-txt">${w.activeJobs}/${w.maxConcurrency} · ${load}%</span>
+            </div>
+            <div class="hb-txt">♥ ${w.lastHeartbeat ? relTime(w.lastHeartbeat) : 'never'}</div>
+        </div>`;
+    }).join('');
+}
+
+// ═════════════════════════════════════════════════════════════════════
+//  RENDER: SCHEDULER
+// ═════════════════════════════════════════════════════════════════════
+function renderScheduler() {
+    const el = document.getElementById('schedulerPanel');
+    if (!S.scheduler) {
+        el.innerHTML = '<div class="no-data">⚠ Unavailable — start taskmesh-scheduler on port 8081</div>';
+        return;
+    }
+    const x = S.scheduler;
+    el.innerHTML = `
+        <div class="leader-card">
+            <div class="leader-ico">👑</div>
+            <div>
+                <div class="leader-name">${esc(x.currentLeader||'Unknown')}</div>
+                <div class="leader-sub">Active leader</div>
+            </div>
+        </div>
+        <div class="sched-row"><span class="skey">This instance</span><span class="sval">${esc(x.instanceId||'—')}</span></div>
+        <div class="sched-row"><span class="skey">My role</span>
+            <span class="badge ${x.isLeader?'LEADER':'STANDBY'}"><span class="bd"></span>${x.isLeader?'LEADER':'STANDBY'}</span>
+        </div>
+    `;
+}
+
+// ═════════════════════════════════════════════════════════════════════
+//  RENDER: FILTER TABS
+// ═════════════════════════════════════════════════════════════════════
+function renderFilterTabs() {
+    document.getElementById('ftabs').innerHTML = FILTERS.map(f => `
+        <div class="ftab ${S.filter===f?'on':''}" onclick="setFilter('${f}')">
+            ${f} <span class="tcnt" id="tc-${f}">0</span>
+        </div>`).join('');
+}
+
+function setFilter(f) {
+    S.filter = f;
+    renderFilterTabs();
+    renderStats();
+    renderJobs();
+}
+
+function updateTabCounts() {
+    FILTERS.forEach(f => {
+        const el = document.getElementById('tc-'+f);
+        if (!el) return;
+        el.textContent = f === 'ALL' ? S.jobs.length : S.jobs.filter(j=>j.status===f).length;
+    });
+}
+
+// ═════════════════════════════════════════════════════════════════════
+//  RENDER: JOBS TABLE
+// ═════════════════════════════════════════════════════════════════════
+function getJobs() {
+    let list = [...S.jobs];
+    if (S.filter !== 'ALL') list = list.filter(j => j.status === S.filter);
+    const q = S.search.toLowerCase();
+    if (q) list = list.filter(j =>
+        (j.jobId||'').toLowerCase().includes(q) ||
+        (j.type||'').toLowerCase().includes(q) ||
+        (j.assignedWorkerId||'').toLowerCase().includes(q) ||
+        (j.status||'').toLowerCase().includes(q)
+    );
+    if (S.sort === 'newest')   list.sort((a,b) => new Date(b.createdAt)-new Date(a.createdAt));
+    if (S.sort === 'oldest')   list.sort((a,b) => new Date(a.createdAt)-new Date(b.createdAt));
+    if (S.sort === 'priority') list.sort((a,b) => (PRIO_LEVEL[b.priority]||0)-(PRIO_LEVEL[a.priority]||0));
+    if (S.sort === 'status')   list.sort((a,b) => (a.status||'').localeCompare(b.status||''));
+    return list;
+}
+
+function renderJobs() {
+    updateTabCounts();
+    const list = getJobs();
+    const tbody = document.getElementById('jtbody');
+    const empty = document.getElementById('emptyState');
+    if (!list.length) { tbody.innerHTML=''; empty.style.display='block'; return; }
+    empty.style.display='none';
+    const canCancel = s => ['QUEUED','ASSIGNED','RUNNING','SCHEDULED','RETRYING'].includes(s);
+    const canRetry  = s => ['FAILED','DEAD_LETTER'].includes(s);
+    tbody.innerHTML = list.map(j => `
+        <tr class="${j.jobId===S.selId?'sel':''}" onclick="selectJob('${j.jobId}')">
+            <td><span class="jid" title="${j.jobId}">${(j.jobId||'').substring(0,8)}…</span></td>
+            <td><span class="jtype">${esc(j.type||'—')}</span></td>
+            <td><span class="badge ${j.status}"><span class="bd"></span>${j.status}</span></td>
+            <td><span class="prio ${j.priority||'NORMAL'}">${j.priority||'NORMAL'}</span></td>
+            <td><span class="jwrk">${j.assignedWorkerId?(j.assignedWorkerId.substring(0,14)):'—'}</span></td>
+            <td style="color:var(--muted);font-size:11px">${j.attemptCount||0}/${j.maxRetries||3}</td>
+            <td style="color:var(--muted);font-size:10px;white-space:nowrap">${j.createdAt?relTime(j.createdAt):'—'}</td>
+            <td onclick="event.stopPropagation()">
+                <div class="acts">
+                    <button class="abtn view" onclick="selectJob('${j.jobId}')">View</button>
+                    ${canCancel(j.status)?`<button class="abtn cancel" onclick="doCancel('${j.jobId}')">Cancel</button>`:''}
+                    ${canRetry(j.status) ?`<button class="abtn retry"  onclick="doRetry('${j.jobId}')">Retry</button>`:''}
+                </div>
+            </td>
+        </tr>`).join('');
+}
+
+function applyFilters() {
+    S.search = document.getElementById('searchIn').value;
+    S.sort   = document.getElementById('sortSel').value;
+    renderJobs();
+}
+
+// ═════════════════════════════════════════════════════════════════════
+//  DRAWER
+// ═════════════════════════════════════════════════════════════════════
+function selectJob(id) {
+    S.selId = id;
+    const j = S.jobs.find(x => x.jobId === id);
+    if (!j) return;
+    renderDrawer(j);
+    document.getElementById('drawerOv').classList.add('on');
+    document.getElementById('drawer').classList.add('on');
+    renderJobs();
+}
+
+function renderDrawer(j) {
+    document.getElementById('dJobId').textContent = j.jobId || '—';
+    const canCancel = ['QUEUED','ASSIGNED','RUNNING','SCHEDULED','RETRYING'].includes(j.status);
+    const canRetry  = ['FAILED','DEAD_LETTER'].includes(j.status);
+    document.getElementById('drawerBd').innerHTML = `
+        <div class="dgrid">
+            <div><div class="dlbl">Status</div><span class="badge ${j.status}"><span class="bd"></span>${j.status}</span></div>
+            <div><div class="dlbl">Priority</div><span class="prio ${j.priority||'NORMAL'}">${j.priority||'NORMAL'}</span></div>
+        </div>
+        <div class="dgrid">
+            <div class="dsec"><div class="dlbl">Type</div><div class="dval" style="font-weight:700">${esc(j.type||'—')}</div></div>
+            <div class="dsec"><div class="dlbl">Worker</div><div class="dval code">${esc(j.assignedWorkerId||'—')}</div></div>
+            <div class="dsec"><div class="dlbl">Attempts</div><div class="dval">${j.attemptCount||0} / ${j.maxRetries||3}</div></div>
+            <div class="dsec"><div class="dlbl">Timeout</div><div class="dval">${j.timeoutSeconds||300}s</div></div>
+        </div>
+        ${j.requiredCapabilities?`<div class="dsec"><div class="dlbl">Capabilities Required</div><div class="dval code">${esc(j.requiredCapabilities)}</div></div>`:''}
+        <div class="dsec"><div class="dlbl">Trace ID</div><div class="dval code">${esc(j.traceId||'—')}</div></div>
+        <div class="dsec"><div class="dlbl">Payload</div><div class="code-blk">${fmtJSON(j.payload)}</div></div>
+        ${j.result?`<div class="dsec"><div class="dlbl">Result ✓</div><div class="code-blk success">${fmtJSON(j.result)}</div></div>`:''}
+        ${j.errorMessage?`<div class="dsec"><div class="dlbl">Error</div><div class="code-blk error">${esc(j.errorMessage)}</div></div>`:''}
+        <div class="divider"></div>
+        <div class="dgrid">
+            <div class="dsec"><div class="dlbl">Created</div><div class="dval code" style="font-size:10px">${j.createdAt?fmtDate(j.createdAt):'—'}</div></div>
+            <div class="dsec"><div class="dlbl">Updated</div><div class="dval code" style="font-size:10px">${j.updatedAt?fmtDate(j.updatedAt):'—'}</div></div>
+        </div>`;
+
+    document.getElementById('drawerFt').innerHTML = `
+        <button class="btn btn-ghost" onclick="copyText('${j.jobId}')">📋 Copy ID</button>
+        ${canCancel?`<button class="btn btn-danger" onclick="doCancel('${j.jobId}')">✕ Cancel Job</button>`:''}
+        ${canRetry ?`<button class="btn btn-warn"   onclick="doRetry('${j.jobId}')">↺ Retry Job</button>`:''}`;
+}
+
+function closeDrawer() {
+    document.getElementById('drawerOv').classList.remove('on');
+    document.getElementById('drawer').classList.remove('on');
+    S.selId = null; renderJobs();
+}
+
+// ═════════════════════════════════════════════════════════════════════
+//  MODAL
+// ═════════════════════════════════════════════════════════════════════
+function openModal()  { document.getElementById('modalOv').classList.add('on'); }
+function closeModal() { document.getElementById('modalOv').classList.remove('on'); }
+function handleModalClick(e) { if (e.target.id==='modalOv') closeModal(); }
+
+async function submitJob() {
+    const payload = document.getElementById('fPayload').value || '{}';
+    try { JSON.parse(payload); } catch { toast('❌ Payload must be valid JSON', 'err'); return; }
+    const idemp = document.getElementById('fIdemp').value.trim();
+    const headers = {};
+    if (idemp) headers['Idempotency-Key'] = idemp;
+    try {
+        const j = await apiPost('/api/v1/jobs', {
+            type: document.getElementById('fType').value,
+            priority: document.getElementById('fPriority').value,
+            payload,
+            requiredCapabilities: document.getElementById('fCaps').value || undefined,
+            maxRetries: parseInt(document.getElementById('fRetries').value)||3,
+            timeoutSeconds: parseInt(document.getElementById('fTimeout').value)||300,
+        }, headers);
+        toast(`✅ Job submitted: ${j.jobId.substring(0,8)}…`, 'ok');
+        closeModal();
+        await refresh();
+        selectJob(j.jobId);
+    } catch(e) { toast(`❌ ${e.message}`, 'err'); }
+}
+
+// ═════════════════════════════════════════════════════════════════════
+//  ACTIONS
+// ═════════════════════════════════════════════════════════════════════
+async function doCancel(id) {
+    if (!confirm('Cancel this job?')) return;
+    try { await apiDelete('/api/v1/jobs/'+id); toast('✅ Job cancelled', 'ok'); await refresh(); }
+    catch(e) { toast(`❌ Cancel failed: ${e.message}`, 'err'); }
+}
+
+async function doRetry(id) {
+    try { await apiPost('/api/v1/jobs/'+id+'/retry'); toast('✅ Job re-queued', 'ok'); await refresh(); }
+    catch(e) { toast(`❌ Retry failed: ${e.message}`, 'err'); }
+}
+
+// ═════════════════════════════════════════════════════════════════════
+//  SETTINGS
+// ═════════════════════════════════════════════════════════════════════
+function openSettings() {
+    document.getElementById('sApiUrl').value = S.apiBase;
+    document.getElementById('sSchedUrl').value = S.schedUrl;
+    document.getElementById('sInterval').value = S.interval;
+    document.getElementById('settingsOv').classList.add('on');
+}
+function closeSettings() { document.getElementById('settingsOv').classList.remove('on'); }
+function handleSettingsClick(e) { if (e.target.id==='settingsOv') closeSettings(); }
+function saveSettings() {
+    S.apiBase   = document.getElementById('sApiUrl').value.trim() || 'http://localhost:8080';
+    S.schedUrl  = document.getElementById('sSchedUrl').value.trim() || 'http://localhost:8081';
+    S.interval  = parseInt(document.getElementById('sInterval').value)||5;
+    localStorage.setItem('tm_api', S.apiBase);
+    localStorage.setItem('tm_sched', S.schedUrl);
+    localStorage.setItem('tm_interval', S.interval);
+    closeSettings();
+    clearInterval(pollTimer);
+    startPoll();
+    startCountdown();
+    refresh();
+    toast('✅ Settings saved', 'ok');
+}
+
+// ═════════════════════════════════════════════════════════════════════
+//  CONNECTION STATUS
+// ═════════════════════════════════════════════════════════════════════
+function setConn(on) {
+    const dot = document.getElementById('liveDot');
+    const lbl = document.getElementById('connLabel');
+    dot.className = `live-dot ${on?'on':'err'}`;
+    lbl.textContent = on ? `Live · ${S.apiBase}` : `Disconnected · ${S.apiBase}`;
+}
+
+// ═════════════════════════════════════════════════════════════════════
+//  TOAST
+// ═════════════════════════════════════════════════════════════════════
+function toast(msg, type='info') {
+    const ct = document.getElementById('toast-ct');
+    const el = document.createElement('div');
+    el.className = `toast ${type}`;
+    el.textContent = msg;
+    ct.appendChild(el);
+    setTimeout(()=>{ el.style.cssText='opacity:0;transform:translateX(110%);transition:.3s'; setTimeout(()=>el.remove(),350); }, 3200);
+}
+
+// ═════════════════════════════════════════════════════════════════════
+//  UTILS
+// ═════════════════════════════════════════════════════════════════════
+function clockTick() {
+    const el = document.getElementById('clk');
+    if (el) el.textContent = new Date().toLocaleTimeString('en-GB',{hour12:false});
+}
+
+function relTime(iso) {
+    const d = Date.now() - new Date(iso).getTime();
+    const s = Math.floor(d/1000);
+    if (s < 10) return 'just now';
+    if (s < 60) return `${s}s ago`;
+    const m = Math.floor(s/60); if (m < 60) return `${m}m ago`;
+    const h = Math.floor(m/60); if (h < 24) return `${h}h ago`;
+    return `${Math.floor(h/24)}d ago`;
+}
+
+function fmtDate(iso) {
+    if (!iso) return '—';
+    return new Date(iso).toLocaleString('en-GB',{
+        year:'numeric',month:'2-digit',day:'2-digit',
+        hour:'2-digit',minute:'2-digit',second:'2-digit'
+    });
+}
+
+function fmtJSON(str) {
+    if (!str || str==='{}' || str==='null') return str||'—';
+    try { return esc(JSON.stringify(JSON.parse(str),null,2)); }
+    catch { return esc(str); }
+}
+
+function esc(s) {
+    if (!s) return '';
+    return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+}
+
+function copyText(t) {
+    navigator.clipboard.writeText(t).then(()=>toast('📋 Copied!','info'));
+}
+
+// ─── Start ────────────────────────────────────────────────────────────────────
+init();
+</script>
+</body>
+</html>

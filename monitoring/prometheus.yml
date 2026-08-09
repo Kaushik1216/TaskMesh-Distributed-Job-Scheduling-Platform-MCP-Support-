@@ -1,0 +1,51 @@
+global:
+  scrape_interval: 15s
+  evaluation_interval: 15s
+
+scrape_configs:
+  - job_name: 'taskmesh-api'
+    metrics_path: '/actuator/prometheus'
+    static_configs:
+      - targets: ['taskmesh-api:8080']
+        labels:
+          service: 'api'
+
+  - job_name: 'taskmesh-scheduler-1'
+    metrics_path: '/actuator/prometheus'
+    static_configs:
+      - targets: ['taskmesh-scheduler-1:8081']
+        labels:
+          service: 'scheduler'
+          instance: 'scheduler-1'
+
+  - job_name: 'taskmesh-scheduler-2'
+    metrics_path: '/actuator/prometheus'
+    static_configs:
+      - targets: ['taskmesh-scheduler-2:8082']
+        labels:
+          service: 'scheduler'
+          instance: 'scheduler-2'
+
+  - job_name: 'taskmesh-worker-1'
+    metrics_path: '/actuator/prometheus'
+    static_configs:
+      - targets: ['taskmesh-worker-1:8083']
+        labels:
+          service: 'worker'
+          instance: 'worker-1'
+
+  - job_name: 'taskmesh-worker-2'
+    metrics_path: '/actuator/prometheus'
+    static_configs:
+      - targets: ['taskmesh-worker-2:8084']
+        labels:
+          service: 'worker'
+          instance: 'worker-2'
+
+  - job_name: 'taskmesh-worker-3'
+    metrics_path: '/actuator/prometheus'
+    static_configs:
+      - targets: ['taskmesh-worker-3:8085']
+        labels:
+          service: 'worker'
+          instance: 'worker-3'

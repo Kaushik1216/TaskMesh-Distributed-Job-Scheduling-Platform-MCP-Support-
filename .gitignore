@@ -1,0 +1,21 @@
+# Target build directories
+target/
+**/target/
+
+# IDE and Editor files
+.idea/
+*.iml
+.vscode/
+.settings/
+.classpath
+.project
+
+# OS generated files
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# Logs and temporary files
+*.log
+scratch/
+.system_generated/

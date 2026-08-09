@@ -1,0 +1,41 @@
+spring:
+  application:
+    name: taskmesh-mcp
+  ai:
+    mcp:
+      server:
+        enabled: true
+        name: taskmesh-mcp
+        version: 1.0.0
+        type: SYNC
+        instructions: |
+          TaskMesh Distributed Job Scheduler MCP Server.
+
+          Use create_job to submit background tasks to the distributed worker pool.
+          After creating a job, use get_job to poll its status until COMPLETED.
+
+          Supported job types: RUN_COMMAND, HTTP_REQUEST, FILE_PROCESSING,
+          TEST_EXECUTION, BUILD_PROJECT, SEND_NOTIFICATION, DATA_PROCESSING.
+
+          Priority levels: CRITICAL > HIGH > NORMAL > LOW.
+
+          Use list_workers to check cluster capacity before submitting large batches.
+          Use cancel_job to stop unwanted jobs. Use retry_job to recover FAILED jobs.
+
+server:
+  port: ${SERVER_PORT:8090}
+
+taskmesh:
+  api:
+    base-url: ${TASKMESH_API_BASE_URL:http://localhost:8080}
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info
+
+logging:
+  level:
+    com.taskmesh: DEBUG
+    org.springframework.ai: INFO
