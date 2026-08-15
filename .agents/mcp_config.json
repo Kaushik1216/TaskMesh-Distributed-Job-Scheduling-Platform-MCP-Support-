@@ -1,1 +1,1 @@
-{"mcpServers":{"taskmesh":{"command":"npx","args":["-y","supergateway","--sse","http://localhost:8090/sse"]}}}
+{"mcpServers":{"taskmesh":{"command":"npx","args":["-y","mcp-remote","http://127.0.0.1:8090/sse"]}}}

@@ -1,6 +1,12 @@
 spring:
   application:
     name: taskmesh-mcp
+  jackson:
+    deserialization:
+      fail-on-unknown-properties: false
+  mvc:
+    async:
+      request-timeout: 3600000
   ai:
     mcp:
       server:
