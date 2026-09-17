@@ -150,6 +150,8 @@ public class JobService {
             .result(job.getResult())
             .errorMessage(job.getErrorMessage())
             .traceId(job.getTraceId())
+            .workflowId(job.getWorkflowId())
+            .workflowNodeKey(job.getWorkflowNodeKey())
             .createdAt(job.getCreatedAt())
             .updatedAt(job.getUpdatedAt())
             .build();

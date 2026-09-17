@@ -85,6 +85,14 @@ public class Job {
     @Column(name = "trace_id")
     private String traceId;
 
+    /** If this job is part of a workflow DAG, the workflow ID. Null for standalone jobs. */
+    @Column(name = "workflow_id")
+    private UUID workflowId;
+
+    /** The node key within the workflow DAG (e.g., "build", "test"). Null for standalone jobs. */
+    @Column(name = "workflow_node_key", length = 100)
+    private String workflowNodeKey;
+
     @Column(name = "created_at", nullable = false, updatable = false)
     @Builder.Default
     private Instant createdAt = Instant.now();

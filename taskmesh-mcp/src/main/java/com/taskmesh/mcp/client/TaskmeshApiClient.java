@@ -93,4 +93,62 @@ public class TaskmeshApiClient {
             return "{\"error\": \"" + e.getMessage() + "\"}";
         }
     }
+
+    // ─── Workflow API ───────────────────────────────────────────────────────
+
+    public String createWorkflow(String name, String description, String failurePolicy,
+                                  String nodesJson, String edgesJson) {
+        try {
+            // Build the request body from structured JSON
+            String body = String.format(
+                "{\"name\":\"%s\",\"description\":\"%s\",\"failurePolicy\":\"%s\",\"nodes\":%s,\"edges\":%s}",
+                name != null ? name : "Unnamed Workflow",
+                description != null ? description : "",
+                failurePolicy != null ? failurePolicy : "FAIL_FAST",
+                nodesJson != null ? nodesJson : "[]",
+                edgesJson != null ? edgesJson : "[]"
+            );
+
+            HttpHeaders headers = new HttpHeaders();
+            headers.setContentType(MediaType.APPLICATION_JSON);
+            HttpEntity<String> request = new HttpEntity<>(body, headers);
+
+            ResponseEntity<String> response = restTemplate.postForEntity(
+                baseUrl + "/api/v1/workflows", request, String.class);
+            log.info("[MCP] create_workflow → {}", response.getStatusCode());
+            return response.getBody();
+        } catch (Exception e) {
+            log.error("[MCP] create_workflow failed", e);
+            return "{\"error\": \"" + e.getMessage() + "\"}";
+        }
+    }
+
+    public String getWorkflow(String workflowId) {
+        try {
+            return restTemplate.getForObject(baseUrl + "/api/v1/workflows/" + workflowId, String.class);
+        } catch (HttpClientErrorException.NotFound e) {
+            return "{\"error\": \"Workflow not found: " + workflowId + "\"}";
+        } catch (Exception e) {
+            return "{\"error\": \"" + e.getMessage() + "\"}";
+        }
+    }
+
+    public String listWorkflows(String status) {
+        try {
+            String url = baseUrl + "/api/v1/workflows";
+            if (status != null && !status.isBlank()) url += "?status=" + status.toUpperCase();
+            return restTemplate.getForObject(url, String.class);
+        } catch (Exception e) {
+            return "{\"error\": \"" + e.getMessage() + "\"}";
+        }
+    }
+
+    public String cancelWorkflow(String workflowId) {
+        try {
+            restTemplate.delete(baseUrl + "/api/v1/workflows/" + workflowId);
+            return "{\"message\": \"Workflow " + workflowId + " cancelled successfully\"}";
+        } catch (Exception e) {
+            return "{\"error\": \"" + e.getMessage() + "\"}";
+        }
+    }
 }

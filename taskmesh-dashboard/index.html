@@ -379,6 +379,30 @@
     .sval{font-size:11px;font-family:'JetBrains Mono',monospace;color:var(--text)}
 
     .no-data{text-align:center;padding:24px;color:var(--muted);font-size:12px}
+    /* ═══ WORKFLOWS & DAG VIZ ═══════════════════════════════════════════════ */
+    .view-tabs { display:flex; background:var(--surface2); border-radius:var(--r-sm); padding:3px; }
+    .vtab { padding:6px 14px; font-size:11px; font-weight:600; color:var(--muted); cursor:pointer; border-radius:var(--r-xs); transition:.2s; }
+    .vtab:hover { color:var(--text); }
+    .vtab.on { background:var(--primary); color:#fff; }
+
+    .wf-card { background:var(--surface); border:1px solid var(--border); border-radius:var(--r); padding:16px; margin-bottom:16px; cursor:pointer; transition:.2s; display:flex; justify-content:space-between; align-items:center; }
+    .wf-card:hover { border-color:var(--border-hi); background:rgba(255,255,255,.018); }
+    .wf-title { font-size:14px; font-weight:700; margin-bottom:4px; }
+    .wf-id { font-family:'JetBrains Mono',monospace; font-size:10px; color:var(--muted); }
+    .wf-meta { display:flex; gap:16px; align-items:center; margin-top:8px; font-size:11px; color:var(--gray); }
+    
+    .dag-container { position:relative; background:var(--bg); border:1px solid var(--border); border-radius:var(--r-sm); padding:20px; overflow-x:auto; min-height:200px; display:flex; gap:40px; margin-top:12px; }
+    .dag-col { display:flex; flex-direction:column; gap:20px; justify-content:center; position:relative; z-index:2; }
+    .dag-node { background:var(--surface2); border:1px solid var(--border); border-radius:var(--r-xs); padding:10px; min-width:140px; text-align:center; box-shadow:0 4px 12px rgba(0,0,0,.2); }
+    .dag-node.COMPLETED { border-color:var(--success); background:var(--success-lo); }
+    .dag-node.FAILED,.dag-node.DEAD_LETTER { border-color:var(--danger); background:var(--danger-lo); }
+    .dag-node.RUNNING { border-color:var(--info); background:var(--info-lo); }
+    .dag-node.CANCELLED { border-color:var(--muted); opacity:0.7; }
+    .dag-nkey { font-size:12px; font-weight:700; margin-bottom:4px; }
+    .dag-ntype { font-size:9px; font-family:'JetBrains Mono',monospace; color:var(--muted); }
+    
+    .dag-svg { position:absolute; top:0; left:0; width:100%; height:100%; z-index:1; pointer-events:none; }
+    .dag-svg path { stroke:var(--border-hi); stroke-width:1.5; fill:none; stroke-dasharray:4; }
     </style>
 </head>
 <body>
@@ -392,6 +416,11 @@
         <div class="logo-text">Task<span>Mesh</span></div>
     </a>
     <div class="topbar-center">
+        <div class="view-tabs">
+            <div class="vtab on" id="vt-jobs" onclick="switchView('jobs')">📋 Jobs</div>
+            <div class="vtab" id="vt-workflows" onclick="switchView('workflows')">🔀 Workflows</div>
+        </div>
+        <div style="width:1px;height:20px;background:var(--border);margin:0 8px"></div>
         <div class="live-dot" id="liveDot"></div>
         <span class="conn-label" id="connLabel">Connecting…</span>
     </div>
@@ -404,6 +433,9 @@
 
 <!-- ═══ MAIN ══════════════════════════════════════════════════════════════════ -->
 <div class="main">
+
+    <!-- ═══ JOBS VIEW ════════════════════════════════════════════════════════ -->
+    <div id="jobsView">
 
     <!-- Stats Row -->
     <div class="stats-row" id="statsRow">
@@ -520,6 +552,53 @@
         </div>
 
     </div><!-- /body-grid -->
+
+    </div><!-- /jobsView -->
+
+    <!-- ═══ WORKFLOWS VIEW ════════════════════════════════════════════════════ -->
+    <div id="workflowsView" style="display:none">
+
+        <!-- Workflow Stats -->
+        <div class="stats-row" style="grid-template-columns:repeat(4,1fr)">
+            <div class="stat" style="--c:#c4b5fd">
+                <div class="stat-top"><span class="stat-lbl">Total Workflows</span><span class="stat-ico">🔀</span></div>
+                <div class="stat-val" id="wf-sv-total">—</div>
+                <div class="stat-sub">All workflows</div>
+            </div>
+            <div class="stat" style="--c:#93c5fd">
+                <div class="stat-top"><span class="stat-lbl">Running</span><span class="stat-ico">▶</span></div>
+                <div class="stat-val" id="wf-sv-running">—</div>
+                <div class="stat-sub">Active pipelines</div>
+            </div>
+            <div class="stat" style="--c:#6ee7b7">
+                <div class="stat-top"><span class="stat-lbl">Completed</span><span class="stat-ico">✓</span></div>
+                <div class="stat-val" id="wf-sv-completed">—</div>
+                <div class="stat-sub">Successful</div>
+            </div>
+            <div class="stat" style="--c:#fca5a5">
+                <div class="stat-top"><span class="stat-lbl">Failed</span><span class="stat-ico">✗</span></div>
+                <div class="stat-val" id="wf-sv-failed">—</div>
+                <div class="stat-sub">Has failures</div>
+            </div>
+        </div>
+
+        <!-- Workflow Actions -->
+        <div style="display:flex;align-items:center;gap:12px;margin-bottom:16px">
+            <button class="create-btn" style="width:auto;padding:10px 24px" onclick="openWfModal()">+ Create Workflow DAG</button>
+            <select class="sort-sel" id="wfFilterSel" onchange="renderWorkflows()">
+                <option value="">All Statuses</option>
+                <option value="RUNNING">Running</option>
+                <option value="COMPLETED">Completed</option>
+                <option value="FAILED">Failed</option>
+                <option value="CANCELLED">Cancelled</option>
+            </select>
+        </div>
+
+        <!-- Workflow List -->
+        <div id="wfList"><div class="no-data">Loading workflows…</div></div>
+
+    </div><!-- /workflowsView -->
+
 </div><!-- /main -->
 
 <!-- ═══ JOB DETAIL DRAWER ═════════════════════════════════════════════════════ -->
@@ -597,6 +676,76 @@
     </div>
 </div>
 
+<!-- ═══ CREATE WORKFLOW MODAL ══════════════════════════════════════════════════ -->
+<div class="modal-ov" id="wfModalOv" onclick="if(event.target.id==='wfModalOv')closeWfModal()">
+    <div class="modal" style="max-width:700px">
+        <div class="mhd">
+            <div class="mtitle">🔀 Create Workflow DAG</div>
+            <button class="icon-btn" onclick="closeWfModal()">✕</button>
+        </div>
+        <div class="mbd">
+            <div class="frow">
+                <div class="fg">
+                    <label class="fl">Workflow Name *</label>
+                    <input class="fc" id="wfName" type="text" placeholder="e.g. CI/CD Pipeline">
+                </div>
+                <div class="fg">
+                    <label class="fl">Failure Policy</label>
+                    <select class="fc" id="wfPolicy">
+                        <option value="FAIL_FAST">FAIL_FAST (cancel all on failure)</option>
+                        <option value="CONTINUE">CONTINUE (skip dependents only)</option>
+                    </select>
+                </div>
+            </div>
+            <div class="fg">
+                <label class="fl">Description</label>
+                <input class="fc" id="wfDesc" type="text" placeholder="Optional description">
+            </div>
+            <div class="divider"></div>
+            <div class="fg">
+                <label class="fl">Nodes (JSON array)</label>
+                <textarea class="fc mono" id="wfNodes" rows="6" placeholder='[
+  {"key":"build","type":"BUILD_PROJECT","priority":"HIGH","payload":"{}"},
+  {"key":"test","type":"TEST_EXECUTION","payload":"{}"},
+  {"key":"deploy","type":"RUN_COMMAND","payload":"{}"}
+]'>[
+  {"key":"build","type":"BUILD_PROJECT","priority":"HIGH","payload":"{}"},
+  {"key":"test","type":"TEST_EXECUTION","payload":"{}"},
+  {"key":"deploy","type":"RUN_COMMAND","payload":"{}"}
+]</textarea>
+            </div>
+            <div class="fg">
+                <label class="fl">Edges (JSON array) — <span style="font-weight:400;text-transform:none;letter-spacing:0">defines "from must finish before to"</span></label>
+                <textarea class="fc mono" id="wfEdges" rows="4" placeholder='[
+  {"from":"build","to":"test"},
+  {"from":"test","to":"deploy"}
+]'>[
+  {"from":"build","to":"test"},
+  {"from":"test","to":"deploy"}
+]</textarea>
+            </div>
+        </div>
+        <div class="mft">
+            <button class="cbtn" onclick="closeWfModal()">Cancel</button>
+            <button class="sbtn" onclick="submitWorkflow()">Submit Workflow →</button>
+        </div>
+    </div>
+</div>
+
+<!-- ═══ WORKFLOW DETAIL DRAWER ═════════════════════════════════════════════════ -->
+<div class="overlay" id="wfDrawerOv" onclick="closeWfDrawer()"></div>
+<div class="drawer" id="wfDrawer" style="width:620px">
+    <div class="drawer-hd">
+        <div>
+            <div style="font-size:15px;font-weight:800">Workflow Details</div>
+            <div style="font-family:'JetBrains Mono',monospace;font-size:10px;color:var(--muted)" id="wfDrawerId">—</div>
+        </div>
+        <button class="icon-btn" onclick="closeWfDrawer()">✕</button>
+    </div>
+    <div class="drawer-bd" id="wfDrawerBd">Loading…</div>
+    <div class="drawer-ft" id="wfDrawerFt"></div>
+</div>
+
 <!-- ═══ SETTINGS PANEL ════════════════════════════════════════════════════════ -->
 <div class="sov" id="settingsOv" onclick="handleSettingsClick(event)">
     <div class="spanel">
@@ -630,6 +779,8 @@
 //  STATE
 // ═════════════════════════════════════════════════════════════════════
 const S = {
+    view: 'jobs', // 'jobs' or 'workflows'
+    workflows: [], wfFilter: '', selWfId: null,
     jobs: [], workers: [], scheduler: null,
     selId: null, filter: 'ALL', search: '', sort: 'newest',
     apiBase: localStorage.getItem('tm_api') || 'http://localhost:8080',
@@ -678,8 +829,12 @@ function cdTick() {
 async function refresh() {
     cdVal = S.interval;
     try {
-        const [jobs, workers] = await Promise.all([apiFetch('/api/v1/jobs'), apiFetch('/api/v1/workers')]);
-        S.jobs = jobs || []; S.workers = workers || [];
+        const [jobs, workers, workflows] = await Promise.all([
+            apiFetch('/api/v1/jobs'),
+            apiFetch('/api/v1/workers'),
+            apiFetch('/api/v1/workflows')
+        ]);
+        S.jobs = jobs || []; S.workers = workers || []; S.workflows = workflows || [];
         S.connected = true;
         setConn(true);
     } catch {
@@ -687,8 +842,9 @@ async function refresh() {
         setConn(false);
     }
     try { S.scheduler = await fetchSched(); } catch { S.scheduler = null; }
-    renderStats(); renderWorkers(); renderScheduler(); renderJobs();
+    renderStats(); renderWorkers(); renderScheduler(); renderJobs(); renderWorkflows();
     if (S.selId) { const j = S.jobs.find(j => j.jobId === S.selId); if (j) renderDrawer(j); }
+    if (S.selWfId) { const wf = S.workflows.find(w => w.workflowId === S.selWfId); if (wf) renderWfDrawer(wf); }
 }
 
 // ═════════════════════════════════════════════════════════════════════
@@ -1057,6 +1213,233 @@ function esc(s) {
 
 function copyText(t) {
     navigator.clipboard.writeText(t).then(()=>toast('📋 Copied!','info'));
+}
+
+// ═════════════════════════════════════════════════════════════════════
+//  WORKFLOW LOGIC
+// ═════════════════════════════════════════════════════════════════════
+function switchView(view) {
+    S.view = view;
+    document.getElementById('vt-jobs').classList.toggle('on', view === 'jobs');
+    document.getElementById('vt-workflows').classList.toggle('on', view === 'workflows');
+    document.getElementById('jobsView').style.display = view === 'jobs' ? 'block' : 'none';
+    document.getElementById('workflowsView').style.display = view === 'workflows' ? 'block' : 'none';
+    if (view === 'workflows') renderWorkflows();
+}
+
+function openWfModal() { document.getElementById('wfModalOv').style.display = 'flex'; }
+function closeWfModal() { document.getElementById('wfModalOv').style.display = 'none'; }
+
+async function submitWorkflow() {
+    const name = document.getElementById('wfName').value.trim();
+    if (!name) return toast('Workflow name required','err');
+    const desc = document.getElementById('wfDesc').value.trim();
+    const policy = document.getElementById('wfPolicy').value;
+    
+    let nodes = [], edges = [];
+    try { nodes = JSON.parse(document.getElementById('wfNodes').value); } catch { return toast('Invalid Nodes JSON','err'); }
+    try { edges = JSON.parse(document.getElementById('wfEdges').value); } catch { return toast('Invalid Edges JSON','err'); }
+    
+    const body = { name, description: desc, failurePolicy: policy, nodes, edges };
+    try {
+        const res = await fetch(`${S.apiBase}/api/v1/workflows`, {
+            method:'POST', headers:{'Content-Type':'application/json'},
+            body: JSON.stringify(body)
+        });
+        if (!res.ok) throw new Error(await res.text());
+        toast('Workflow created successfully','ok');
+        closeWfModal(); refresh();
+    } catch (e) {
+        toast('Create failed: '+e.message,'err');
+    }
+}
+
+function renderWorkflows() {
+    if (S.view !== 'workflows') return;
+    
+    // Stats
+    const total = S.workflows.length;
+    const running = S.workflows.filter(w => w.status === 'RUNNING').length;
+    const comp = S.workflows.filter(w => w.status === 'COMPLETED').length;
+    const fail = S.workflows.filter(w => w.status === 'FAILED' || w.status === 'CANCELLED').length;
+    
+    document.getElementById('wf-sv-total').textContent = total;
+    document.getElementById('wf-sv-running').textContent = running;
+    document.getElementById('wf-sv-completed').textContent = comp;
+    document.getElementById('wf-sv-failed').textContent = fail;
+    
+    // Filter
+    S.wfFilter = document.getElementById('wfFilterSel').value;
+    const list = S.workflows.filter(w => !S.wfFilter || w.status === S.wfFilter);
+    
+    const container = document.getElementById('wfList');
+    if (!list.length) {
+        container.innerHTML = `<div class="no-data">No workflows found</div>`;
+        return;
+    }
+    
+    container.innerHTML = list.map(w => {
+        let color = 'var(--muted)';
+        if (w.status==='RUNNING') color = 'var(--info)';
+        if (w.status==='COMPLETED') color = 'var(--success)';
+        if (w.status==='FAILED') color = 'var(--danger)';
+        
+        return `
+        <div class="wf-card" onclick="selectWorkflow('${w.workflowId}')">
+            <div>
+                <div class="wf-title">${esc(w.name)}</div>
+                <div class="wf-id">${w.workflowId}</div>
+                <div class="wf-meta">
+                    <span style="color:${color};font-weight:700">${w.status}</span>
+                    <span>${w.completedNodes}/${w.totalNodes} Nodes Done</span>
+                    <span>${timeAgo(w.createdAt)}</span>
+                </div>
+            </div>
+            <div>➔</div>
+        </div>`;
+    }).join('');
+}
+
+async function selectWorkflow(id) {
+    S.selWfId = id;
+    try {
+        const wf = await apiFetch(`/api/v1/workflows/${id}`);
+        renderWfDrawer(wf);
+    } catch { toast('Failed to load workflow','err'); }
+}
+
+function closeWfDrawer() {
+    S.selWfId = null;
+    document.getElementById('wfDrawerOv').classList.remove('on');
+    document.getElementById('wfDrawer').classList.remove('on');
+}
+
+function renderWfDrawer(wf) {
+    document.getElementById('wfDrawerId').textContent = wf.workflowId;
+    const bd = document.getElementById('wfDrawerBd');
+    const ft = document.getElementById('wfDrawerFt');
+    
+    let html = `
+    <div class="dsec">
+        <div class="dgrid">
+            <div><div class="dlbl">Status</div><div class="dval" style="font-weight:700">${wf.status}</div></div>
+            <div><div class="dlbl">Created At</div><div class="dval">${fmtDate(wf.createdAt)}</div></div>
+            <div><div class="dlbl">Failure Policy</div><div class="dval">${wf.failurePolicy}</div></div>
+            <div><div class="dlbl">Trace ID</div><div class="dval code">${wf.traceId||'—'}</div></div>
+            <div style="grid-column:1/-1"><div class="dlbl">Description</div><div class="dval">${esc(wf.description)||'—'}</div></div>
+        </div>
+    </div>
+    
+    <div class="dsec">
+        <div style="font-size:12px;font-weight:700;margin-bottom:12px;padding-bottom:6px;border-bottom:1px solid var(--border)">DAG Visualization</div>
+        <div id="dagViz" class="dag-container"></div>
+    </div>
+    `;
+    bd.innerHTML = html;
+    
+    ft.innerHTML = `
+        <button class="sbtn" onclick="refresh()" style="flex:1">Refresh</button>
+        ${(wf.status==='PENDING'||wf.status==='RUNNING') 
+            ? `<button class="cbtn" style="flex:1;background:var(--danger-lo);color:var(--danger)" onclick="cancelWf('${wf.workflowId}')">Cancel Workflow</button>` 
+            : ''}
+    `;
+    
+    document.getElementById('wfDrawerOv').classList.add('on');
+    document.getElementById('wfDrawer').classList.add('on');
+    
+    renderDAG(wf, 'dagViz');
+}
+
+async function cancelWf(id) {
+    if(!confirm('Cancel workflow?')) return;
+    try {
+        await fetch(`${S.apiBase}/api/v1/workflows/${id}`, {method:'DELETE'});
+        toast('Workflow cancelled','ok');
+        refresh();
+    } catch(e) { toast('Error: '+e.message,'err'); }
+}
+
+function renderDAG(wf, containerId) {
+    const cont = document.getElementById(containerId);
+    if (!wf.nodes || !wf.nodes.length) { cont.innerHTML = 'No nodes'; return; }
+    
+    // BFS topological layer assignment
+    const inDegree = {};
+    const adj = {};
+    wf.nodes.forEach(n => { inDegree[n.key] = 0; adj[n.key] = []; });
+    (wf.edges||[]).forEach(e => {
+        if(adj[e.from]) adj[e.from].push(e.to);
+        if(inDegree[e.to] !== undefined) inDegree[e.to]++;
+    });
+    
+    const layers = [];
+    let q = Object.keys(inDegree).filter(k => inDegree[k] === 0);
+    while (q.length > 0) {
+        layers.push(q);
+        const nextQ = [];
+        for (const k of q) {
+            for (const child of adj[k]) {
+                inDegree[child]--;
+                if (inDegree[child] === 0) nextQ.push(child);
+            }
+        }
+        q = nextQ;
+    }
+    
+    // Fallback if cycles or disconnected (shouldn't happen with our API validation)
+    const processed = layers.flat();
+    const missed = wf.nodes.filter(n => !processed.includes(n.key)).map(n=>n.key);
+    if(missed.length) layers.push(missed);
+
+    // Build HTML DOM for nodes
+    const nodeMap = {};
+    wf.nodes.forEach(n => nodeMap[n.key] = n);
+    
+    let html = `<svg class="dag-svg" id="dagSvg"></svg>`;
+    layers.forEach((layerNodes, i) => {
+        html += `<div class="dag-col">`;
+        layerNodes.forEach(nk => {
+            const n = nodeMap[nk];
+            if(!n) return;
+            html += `
+            <div class="dag-node ${n.jobStatus}" id="dn-${n.key}">
+                <div class="dag-nkey">${esc(n.key)}</div>
+                <div class="dag-ntype">${esc(n.jobType)}</div>
+                <div style="margin-top:6px;font-size:9px;font-weight:700">${n.jobStatus}</div>
+            </div>`;
+        });
+        html += `</div>`;
+    });
+    cont.innerHTML = html;
+    
+    // Draw SVG lines after DOM layout is ready
+    setTimeout(() => {
+        const svg = document.getElementById('dagSvg');
+        if (!svg) return;
+        const rectCont = cont.getBoundingClientRect();
+        
+        let paths = '';
+        (wf.edges||[]).forEach(e => {
+            const elF = document.getElementById(`dn-${e.from}`);
+            const elT = document.getElementById(`dn-${e.to}`);
+            if (!elF || !elT) return;
+            
+            const rf = elF.getBoundingClientRect();
+            const rt = elT.getBoundingClientRect();
+            
+            // local coords inside container
+            const x1 = (rf.right - rectCont.left) + cont.scrollLeft;
+            const y1 = (rf.top + rf.height/2 - rectCont.top) + cont.scrollTop;
+            const x2 = (rt.left - rectCont.left) + cont.scrollLeft;
+            const y2 = (rt.top + rt.height/2 - rectCont.top) + cont.scrollTop;
+            
+            const cp1x = x1 + 20;
+            const cp2x = x2 - 20;
+            
+            paths += `<path d="M ${x1} ${y1} C ${cp1x} ${y1}, ${cp2x} ${y2}, ${x2} ${y2}" />`;
+        });
+        svg.innerHTML = paths;
+    }, 50);
 }
 
 // ─── Start ────────────────────────────────────────────────────────────────────

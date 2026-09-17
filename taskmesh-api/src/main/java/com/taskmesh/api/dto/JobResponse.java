@@ -25,6 +25,8 @@ public class JobResponse {
     private String result;
     private String errorMessage;
     private String traceId;
+    private UUID workflowId;
+    private String workflowNodeKey;
     private Instant createdAt;
     private Instant updatedAt;
 }

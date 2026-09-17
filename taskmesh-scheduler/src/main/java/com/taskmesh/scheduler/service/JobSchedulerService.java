@@ -59,6 +59,7 @@ public class JobSchedulerService {
     private final CapabilityAwareStrategy strategy;
     private final KafkaTemplate<String, String> kafkaTemplate;
     private final ObjectMapper           objectMapper;
+    private final DagExecutionService    dagExecutionService;
 
     // ─── Kafka Listeners ────────────────────────────────────────────────────
 
@@ -89,6 +90,9 @@ public class JobSchedulerService {
                 decrementWorkerLoad(event.workerId());
                 log.info("Job COMPLETED jobId={} workerId={} durationMs={}",
                     event.jobId(), event.workerId(), event.durationMs());
+
+                // Advance DAG if this job is part of a workflow
+                dagExecutionService.onNodeCompleted(event.jobId());
             });
         } catch (Exception e) {
             log.error("Error handling JobCompletedEvent", e);
@@ -113,6 +117,9 @@ public class JobSchedulerService {
                     publishToDeadLetter(job);
                     log.warn("Job DEAD_LETTER jobId={} after {}/{} attempts",
                         event.jobId(), event.attemptCount(), event.maxRetries());
+
+                    // Advance DAG failure policy if this job is part of a workflow
+                    dagExecutionService.onNodeFailed(event.jobId());
                 } else {
                     // Exponential backoff: delay = 2^attempt * BASE_RETRY_MS
                     long delayMs = BASE_RETRY_MS * (1L << event.attemptCount());
