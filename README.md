@@ -97,6 +97,21 @@ TaskMesh is a production-style distributed job scheduler that allows both **huma
 | **Live Dashboard** | Real-time web dashboard with job monitoring, worker status, and quick job submission |
 | **Distributed Tracing** | Every job gets a unique `traceId` for end-to-end correlation |
 | **Event-Driven Architecture** | Kafka-backed event streaming for reliable, decoupled communication |
+| **DAG Workflows** | Orchestrate complex multi-step pipelines with dependency graphs, failure policies (`FAIL_FAST`, `CONTINUE`), and automatic parent-to-child data injection |
+
+---
+
+## DAG Workflow Execution
+
+TaskMesh supports orchestrating multi-step execution pipelines using **Directed Acyclic Graphs (DAGs)**.
+
+- **Dependency Graph:** Define jobs as nodes (e.g., `build`, `test`, `deploy`) and dependencies as edges (e.g., `build` -> `test`). The scheduler automatically resolves the topological order.
+- **Smart Unblocking:** Root nodes are executed immediately. Downstream nodes wait until ALL their parent nodes complete successfully.
+- **Data Injection:** Results from parent jobs are automatically injected into the child job's payload before execution.
+- **Failure Policies:**
+  - `FAIL_FAST`: If any node fails, the entire workflow and all remaining pending nodes are cancelled immediately.
+  - `CONTINUE`: If a node fails, only its downstream dependents are cancelled. Independent parallel branches continue executing.
+- **Cycle Detection:** Built-in validation using Kahn's algorithm guarantees that impossible cyclic pipelines are rejected instantly.
 
 ---
 
@@ -252,12 +267,16 @@ TaskMesh exposes a **Model Context Protocol (MCP) server** that allows AI agents
 
 | Tool | Description |
 |---|---|
-| `createJob` | Submit a new job to the distributed worker pool |
+| `createJob` | Submit a new standalone job to the distributed worker pool |
 | `getJob` | Poll job status and retrieve results by job ID |
 | `listJobs` | Browse all jobs with optional status filter |
 | `cancelJob` | Cancel a queued or running job |
 | `retryJob` | Retry a failed or dead-letter job |
 | `listWorkers` | Inspect worker cluster capacity and load |
+| `createWorkflow` | Create a DAG workflow pipeline (automatically creates and orchestrates child jobs) |
+| `getWorkflow` | Poll a workflow's overall status, progression, and individual node statuses |
+| `listWorkflows` | List all workflows with optional status filter |
+| `cancelWorkflow` | Cancel an entire workflow and all its pending jobs |
 
 ### Configure in Claude Desktop
 
