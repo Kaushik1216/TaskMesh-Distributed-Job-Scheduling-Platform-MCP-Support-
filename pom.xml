@@ -12,11 +12,11 @@
     <description>Fault-tolerant distributed job scheduling platform with MCP support for AI agents</description>
 
     <modules>
-        <module>taskmesh-common</module>
-        <module>taskmesh-api</module>
-        <module>taskmesh-scheduler</module>
-        <module>taskmesh-worker</module>
-        <module>taskmesh-mcp</module>
+        <module>common</module>
+        <module>api</module>
+        <module>scheduler</module>
+        <module>worker</module>
+        <module>mcp</module>
     </modules>
 
     <properties>

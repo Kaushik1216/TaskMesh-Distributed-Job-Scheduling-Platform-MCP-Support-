@@ -347,23 +347,23 @@ The **scheduler** automatically routes each job to a worker that has the matchin
 
 ```
 TaskMesh/
-├── taskmesh-common/          # Shared entities, enums (Job, Worker, JobType, JobStatus)
-├── taskmesh-api/             # REST API server (Spring Boot + JPA + Kafka Producer)
+├── common/          # Shared entities, enums (Job, Worker, JobType, JobStatus)
+├── api/             # REST API server (Spring Boot + JPA + Kafka Producer)
 │   ├── controller/           #   JobController, WorkerController
 │   ├── service/              #   JobService, WorkerService
 │   ├── dto/                  #   CreateJobRequest, JobResponse, WorkerResponse
 │   └── config/               #   SecurityConfig, CorsConfig, AppConfig
-├── taskmesh-scheduler/       # Job scheduling engine (Kafka Consumer + Redis Leader Election)
+├── scheduler/       # Job scheduling engine (Kafka Consumer + Redis Leader Election)
 │   ├── service/              #   JobSchedulerService, LeaderElectionService
 │   └── strategy/             #   CapabilityAwareStrategy
-├── taskmesh-worker/          # Job execution nodes (Kafka Consumer + Job Handlers)
+├── worker/          # Job execution nodes (Kafka Consumer + Job Handlers)
 │   ├── executor/             #   ConcurrentJobExecutor
 │   ├── handler/              #   RunCommandHandler, HttpRequestHandler, etc.
 │   └── service/              #   HeartbeatService
-├── taskmesh-mcp/             # MCP Server for AI agents (Spring AI + SSE Transport)
+├── mcp/             # MCP Server for AI agents (Spring AI + SSE Transport)
 │   ├── tools/                #   JobManagementTools (@Tool annotated)
 │   └── client/               #   TaskmeshApiClient (HTTP→API bridge)
-├── taskmesh-dashboard/       # Live monitoring dashboard (HTML/CSS/JS + Nginx)
+├── dashboard/       # Live monitoring dashboard (HTML/CSS/JS + Nginx)
 ├── monitoring/               # Prometheus configuration
 ├── docker-compose.yml        # Full cluster orchestration (13 containers)
 └── pom.xml                   # Parent Maven POM (multi-module)
